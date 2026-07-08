@@ -309,23 +309,29 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         
        # Mulai Bot
         options = Options()
-        options.add_argument("--headless=new")
+        
+        # --- PERBAIKAN SUPER STABIL UNTUK SERVER INTERNET ---
+        import platform
+        if platform.system() == "Linux":
+            # Server Linux wajib pakai mode headless klasik agar tidak crash karena kekurangan komponen grafis
+            options.add_argument("--headless") 
+        else:
+            # Laptop Windows Mas Arly tetap pakai mode baru tidak apa-apa
+            options.add_argument("--headless=new")
+            
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
+        options.add_argument("--disable-extensions")
         options.add_argument("--log-level=3")
         options.add_argument("--window-size=1920,1080")
         options.add_argument("--lang=id")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
         
-        # --- JURUS PAMUNGKAS: Paksa Path Default Linux Server atau Windows Lokal ---
-        import platform
+        # Serahkan pencarian jalur driver ke sistem otomatis Selenium 4 (Lebih Aman & Akurat)
         if platform.system() == "Linux":
-            # Set lokasi biner Chromium & Driver bawaan paket Linux Debian/Ubuntu di Server
-            options.binary_location = "/usr/bin/chromium"
-            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
+            driver = webdriver.Chrome(options=options)
         else:
-            # Jika di laptop Windows Mas Arly, gunakan otomatisasi lokal seperti biasa
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         
         try:
