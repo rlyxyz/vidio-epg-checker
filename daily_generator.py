@@ -307,10 +307,14 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
 
         import platform
         if platform.system() == "Linux":
-            # Setingan mutlak untuk server Debian Streamlit
             options.add_argument("--headless")
+            options.add_argument("--remote-debugging-port=9222") # Port komunikasi darurat wajib untuk Docker
             options.binary_location = "/usr/bin/chromium"
-            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
+            
+            # --- KUNCI FINAL ---
+            # Kita HAPUS paksaan jalur chromedriver yang cacat. 
+            # Biarkan sistem cerdas bawaan Selenium 4 yang mengatur semuanya otomatis!
+            driver = webdriver.Chrome(options=options)
         else:
             # Setingan Lokal Laptop Windows
             options.add_argument("--headless=new")
