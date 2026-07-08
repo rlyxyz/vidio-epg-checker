@@ -300,15 +300,22 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         
        # Mulai Bot
         options = Options()
-        options.add_argument("--headless") # Gunakan headless klasik tanpa =new
+        options.add_argument("--headless") 
         options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage") # Mencegah kehabisan RAM
+        options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
+        
+        # --- KUNCI PENYELESAIAN MASALAH (ANTI-CRASH) ---
+        # Mencegah server Streamlit mencekik browser karena masalah izin folder.
+        # Kita paksa browser untuk bekerja di dalam folder sementara (/tmp) yang bebas hambatan.
+        options.add_argument("--user-data-dir=/tmp/chrome-data")
+        options.add_argument("--data-path=/tmp/chrome-data")
+        options.add_argument("--disk-cache-dir=/tmp/chrome-cache")
 
         import platform
         if platform.system() == "Linux":
-            # Tembak langsung ke lokasi instalasi dari packages.txt
+            # Eksekusi aman untuk server Streamlit Cloud
             options.binary_location = "/usr/bin/chromium"
             driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
         else:
