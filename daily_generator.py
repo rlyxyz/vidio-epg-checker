@@ -383,7 +383,9 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
 
     # PROSES VERIFIKASI
     if not web_schedules:
-        st.error("Jadwal tidak terbaca dari web Vidio. Web kosong atau struktur halamannya berubah.")
+        st.error("Jadwal tidak terbaca dari web Vidio. Berikut adalah teks mentah yang ditangkap oleh robot:")
+        # --- CCTV ROBOT: Tampilkan 3000 huruf pertama dari web Vidio ke layar ---
+        st.code(soup.get_text(" ")[:3000], language="text")
         st.stop()
         
     hasil_error = []
