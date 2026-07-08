@@ -300,27 +300,33 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         
        # Mulai Bot
         options = Options()
+        
+        # --- PARAMETER SAKTI ANTI-CRASH UNTUK CHROMIUM TERBARU ---
+        options.add_argument("--headless=new") # Wajib pakai =new untuk versi terbaru
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
+        options.add_argument("--remote-debugging-port=9222") # Port komunikasi wajib untuk server Docker
+        options.add_argument("--disable-setuid-sandbox")
 
-        import platform
-        import shutil
-
-        if platform.system() == "Linux":
-            options.add_argument("--headless")
-            
-            # --- DETEKSI OTOMATIS JALUR LINUX ---
-            chrome_path = shutil.which("chromium") or shutil.which("chromium-browser") or "/usr/bin/chromium"
-            driver_path = shutil.which("chromedriver") or "/usr/bin/chromedriver"
-            
-            options.binary_location = chrome_path
-            driver = webdriver.Chrome(service=Service(driver_path), options=options)
-        else:
-            # Setingan Lokal Laptop Windows
-            options.add_argument("--headless=new")
-            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        # --- SISTEM 3 LAPIS PERTAHANAN (AUTO-FALLBACK) ---
+        try:
+            # Lapis 1: Biarkan Selenium 4 bekerja cerdas mendeteksi & mengunduh otomatis (Paling Aman)
+            driver = webdriver.Chrome(options=options)
+        except Exception:
+            import platform
+            if platform.system() == "Linux":
+                try:
+                    # Lapis 2: Jika gagal, paksa panggil aplikasi dari dalam sistem Linux Streamlit
+                    options.binary_location = "/usr/bin/chromium"
+                    driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
+                except Exception:
+                    # Lapis 3: Jika masih gagal, paksa unduh ulang jembatannya
+                    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            else:
+                # Lapis LOKAL: Khusus saat dijalankan di laptop Windows Mas Arly
+                driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         
         try:
             driver.get(url_vidio)
