@@ -298,38 +298,25 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
     with st.status("Memulai Robot Scraping...", expanded=True) as status:
         st.write(f"Menghubungkan ke web Vidio (ID: {channel_id})...")
         
-       # Mulai Bot
+       # Mulai Bot (Pindah ke Mozilla Firefox)
         import platform
-        import tempfile
-        from selenium.webdriver.chrome.options import Options
-        from selenium.webdriver.chrome.service import Service
-        from webdriver_manager.chrome import ChromeDriverManager
-        from webdriver_manager.core.os_manager import ChromeType
+        from selenium.webdriver.firefox.options import Options as FirefoxOptions
+        from selenium.webdriver.firefox.service import Service as FirefoxService
+        from webdriver_manager.firefox import GeckoDriverManager
 
-        options = Options()
-        # Gunakan mode headless terbaru
-        options.add_argument("--headless=new") 
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=1920,1080")
-        
-        # Buat folder kerja sementara yang 100% diizinkan oleh Streamlit
-        temp_dir = tempfile.mkdtemp()
-        options.add_argument(f"--user-data-dir={temp_dir}")
-        options.add_argument(f"--data-path={temp_dir}")
-        options.add_argument(f"--disk-cache-dir={temp_dir}")
+        options = FirefoxOptions()
+        options.add_argument("--headless") # Jalankan tanpa layar
+        options.add_argument("--width=1920")
+        options.add_argument("--height=1080")
 
-        if platform.system() == "Linux":
-            # Tunjuk ke browser bawaan Streamlit
-            options.binary_location = "/usr/bin/chromium"
-            # KUNCI UTAMA: Paksa Python mencari driver yang spesifik untuk tipe CHROMIUM Linux
-            service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
-            driver = webdriver.Chrome(service=service, options=options)
-        else:
-            # Setingan Lokal Laptop Windows Mas Arly
-            service = Service(ChromeDriverManager().install())
-            driver = webdriver.Chrome(service=service, options=options)
+        # Firefox sangat stabil di server Linux, kita tidak butuh trik anti-crash yang rumit!
+        try:
+            # GeckoDriverManager akan otomatis mencocokkan driver untuk Streamlit (Linux) maupun Laptop (Windows)
+            service = FirefoxService(GeckoDriverManager().install())
+            driver = webdriver.Firefox(service=service, options=options)
+        except Exception as e:
+            st.error(f"❌ Robot Firefox gagal menyala: {e}")
+            st.stop()
         try:
             driver.get(url_vidio)
             time.sleep(8)
