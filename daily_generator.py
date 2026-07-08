@@ -310,23 +310,17 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
 
         import platform
         if platform.system() == "Linux":
-            # PERBAIKAN TOTAL: Parameter anti-crash untuk Docker Cloud Server
-            options.add_argument("--headless=new")
+            # 🛑 KUNCI UTAMA: Wajib pakai headless klasik di Linux Server agar tidak crash
+            options.add_argument("--headless")
             options.add_argument("--single-process")
             options.add_argument("--disable-zygote")
             options.add_argument("--disable-setuid-sandbox")
             
-            if os.path.exists("/usr/bin/chromium"):
-                options.binary_location = "/usr/bin/chromium"
-            elif os.path.exists("/usr/bin/chromium-browser"):
-                options.binary_location = "/usr/bin/chromium-browser"
-                
-            if os.path.exists("/usr/bin/chromedriver"):
-                driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
-            else:
-                driver = webdriver.Chrome(options=options)
+            # Langsung kunci ke lokasi install biner dari packages.txt
+            options.binary_location = "/usr/bin/chromium"
+            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
         else:
-            # Setingan Laptop Windows Mas Arly (Lokal)
+            # Setingan Laptop Windows Mas Arly (Lokal - Tetap Aman & Lancar)
             options.add_argument("--headless=new")
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         
