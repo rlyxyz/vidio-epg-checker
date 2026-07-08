@@ -223,7 +223,6 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         options.add_argument("--height=1080")
         
         # --- JURUS PENYAMARAN ROBOT ---
-        # Kita menyamar sebagai Google Chrome di laptop Windows agar Vidio tidak curiga
         options.set_preference("general.useragent.override", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
 
         try:
@@ -234,7 +233,14 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
             st.stop()
             
         try:
-            driver.get(url_vidio)
+            # --- JURUS PENYAMARAN ALUR MANUSIA (ANTI-REDIRECT) ---
+            st.write("Membuka Beranda Vidio untuk verifikasi koneksi...")
+            driver.get("https://www.vidio.com/") 
+            time.sleep(3)
+            
+            st.write(f"Masuk ke halaman live channel (ID: {channel_id})...")
+            driver.get(url_vidio) 
+            
             st.write("Menunggu halaman web Vidio dimuat sepenuhnya (10 detik)...")
             time.sleep(10)
             
@@ -254,7 +260,6 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
             st.write("Menarik data HTML...")
             
             # --- KAMERA CCTV ROBOT ---
-            # Mengambil screenshot dari apa yang sebenarnya dilihat robot
             driver.save_screenshot("mata_robot.png")
             
             soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -285,7 +290,6 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
     if not web_schedules:
         st.error("Jadwal tidak terbaca dari web Vidio. Berikut adalah tangkapan layar (foto) apa yang dilihat robot:")
         try:
-            # Menampilkan hasil jepretan kamera robot ke web Streamlit
             st.image("mata_robot.png", caption="Layar Web Vidio versi Robot")
         except:
             pass
