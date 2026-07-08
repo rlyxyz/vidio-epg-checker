@@ -304,23 +304,23 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         import platform
 
         options = Options()
-        # Wajib pakai =new untuk Chromium versi terbaru di server Debian
-        options.add_argument("--headless=new") 
+        # KUNCI UTAMA: Wajib pakai --headless klasik (TANPA =new) untuk server Streamlit
+        options.add_argument("--headless") 
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
+        options.add_argument("--disable-features=NetworkService")
         options.add_argument("--window-size=1920,1080")
 
         if platform.system() == "Linux":
-            # KUNCI FINAL: JANGAN pakai webdriver_manager di Streamlit Cloud!
-            # Kita tembak langsung ke aplikasi yang di-install oleh packages.txt
+            # Tembak langsung ke Chromium bawaan server Streamlit
             options.binary_location = "/usr/bin/chromium"
             service = Service("/usr/bin/chromedriver")
-            
             driver = webdriver.Chrome(service=service, options=options)
         else:
-            # Setingan Lokal Laptop Windows Mas Arly (Tetap pakai auto-download)
+            # Setingan Lokal Laptop Windows Mas Arly
             from webdriver_manager.chrome import ChromeDriverManager
+            options.add_argument("--headless=new") # Lokal Windows aman pakai =new
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
         try:
