@@ -148,15 +148,21 @@ def normalisasi_tanggal(tgl_str):
 @st.cache_resource
 def init_gspread():
     scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly", "https://www.googleapis.com/auth/drive.readonly"]
-    # PERBAIKAN: Mengambil kredensial dari brankas rahasia Streamlit Cloud (st.secrets)
-    # bukan lagi dari file credentials.json
     try:
-        credentials = Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"], scopes=scopes
-        )
+        # STRATEGI BARU: Cek file di laptop dulu. Jika ada, langsung pakai!
+        # Ini membuat Streamlit lokal tidak perlu menyentuh st.secrets sehingga tidak crash.
+        if os.path.exists("credentials.json"):
+            import json
+            with open("credentials.json", "r") as f:
+                creds_dict = json.load(f)
+        else:
+            # Jika file tidak ada di folder, berarti ini sedang berjalan di Web Cloud
+            creds_dict = dict(st.secrets["gcp_service_account"])
+            
+        credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         return gspread.authorize(credentials)
     except Exception as e:
-        st.error(f"Gagal membaca rahasia (Secrets). Pastikan Streamlit Secrets sudah disetting. Error: {e}")
+        st.error(f"Gagal membaca rahasia (Secrets) / Credentials. Error: {e}")
         st.stop()
 
 @st.cache_data(ttl=300)
@@ -210,7 +216,7 @@ with col2:
     try:
         valid_tabs = fetch_valid_tabs(target_url)
     except Exception as e:
-        st.error(f"Gagal terhubung ke Google Sheets. Pastikan credentials.json valid. Error: {e}")
+        st.error(f"Gagal terhubung ke Google Sheets. Error: {e}")
         st.stop()
         
     if not valid_tabs:
@@ -263,36 +269,21 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
     
     # --- SMART ALIAS LOGIC (Pencocokan Persis) ---
     raw_name = pilihan_tab.upper()
-    
-    # Hapus semua tanda baca (tanda seru, titik, koma, dll)
     raw_name = re.sub(r'[^\w\s]', '', raw_name) 
     
     for kata in ['TO CSV', 'HASIL CSV', 'HASIL', 'CSV', 'JADWAL', 'WIB']:
         raw_name = raw_name.replace(kata, ' ')
     channel_name = re.sub(r'\s+', ' ', raw_name).strip()
     
-    # Kamus Pencocokan Persis
     exact_aliases = {
-        'PLTV': 'PREMIER LEAGUE TV', 
-        'RMTV': 'REAL MADRID TV',
-        'CGOLF 1': 'CHAMPIONS TV GOLF 1', 
-        'CGOLF 2': 'CHAMPIONS TV GOLF 2', 
-        'CGOLF': 'CHAMPIONS TV GOLF',
-        'CTV 1': 'CHAMPIONS TV 1', 
-        'CTV 2': 'CHAMPIONS TV 2', 
-        'CTV 3': 'CHAMPIONS TV 3',
-        'CTV 4': 'CHAMPIONS TV 4', 
-        'CTV 5': 'CHAMPIONS TV 5', 
-        'CTV 6': 'CHAMPIONS TV 6',
-        'CTV': 'CHAMPIONS TV',
-        'HIP HIP HOREE': 'HIP HIP HORE',   
-        'HOREE': 'HOREE CHANNEL',          
-        'HORE': 'HOREE CHANNEL',           
-        'ABC': 'ABC AUSTRALIA',
-        'NHK': 'NHK JAPAN'
+        'PLTV': 'PREMIER LEAGUE TV', 'RMTV': 'REAL MADRID TV',
+        'CGOLF 1': 'CHAMPIONS TV GOLF 1', 'CGOLF 2': 'CHAMPIONS TV GOLF 2', 'CGOLF': 'CHAMPIONS TV GOLF',
+        'CTV 1': 'CHAMPIONS TV 1', 'CTV 2': 'CHAMPIONS TV 2', 'CTV 3': 'CHAMPIONS TV 3',
+        'CTV 4': 'CHAMPIONS TV 4', 'CTV 5': 'CHAMPIONS TV 5', 'CTV 6': 'CHAMPIONS TV 6', 'CTV': 'CHAMPIONS TV',
+        'HIP HIP HOREE': 'HIP HIP HORE', 'HOREE': 'HOREE CHANNEL', 'HORE': 'HOREE CHANNEL',           
+        'ABC': 'ABC AUSTRALIA', 'NHK': 'NHK JAPAN'
     }
     
-    # Ubah nama jika ada di dalam kamus
     if channel_name in exact_aliases:
         channel_name = exact_aliases[channel_name]
     
@@ -307,34 +298,36 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
     with st.status("Memulai Robot Scraping...", expanded=True) as status:
         st.write(f"Menghubungkan ke web Vidio (ID: {channel_id})...")
         
-       # Mulai Bot
+        # Mulai Bot
         options = Options()
-        
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--log-level=3")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--lang=id")
+        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+
         import platform
         if platform.system() == "Linux":
-            # PARAMETER WAJIB UNTUK MENEMBUS PROTEKSI SERVER LINUX CLOUD
-            options.add_argument("--headless") 
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--disable-setuid-sandbox") # <--- Menembus batasan hak akses Docker
-            options.add_argument("--remote-debugging-port=9222") # <--- Membuka port komunikasi internal
-            options.add_argument("--disable-extensions")
-            
-            # SISTEM AUTO-FALLBACK (Mencari jalur terbaik otomatis)
-            try:
-                # Cara 1: Biarkan Selenium 4 mencari sendiri secara otomatis di dalam sistem
-                driver = webdriver.Chrome(options=options)
-            except Exception:
-                # Cara 2: Jika Cara 1 gagal, paksa arahkan ke jalur paten Linux
-                options.binary_location = "/usr/bin/chromium"
-                driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
-        else:
-            # Setingan aman khusus untuk laptop Windows Mas Arly
+            # PERBAIKAN TOTAL: Parameter anti-crash untuk Docker Cloud Server
             options.add_argument("--headless=new")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--log-level=3")
+            options.add_argument("--single-process")
+            options.add_argument("--disable-zygote")
+            options.add_argument("--disable-setuid-sandbox")
+            
+            if os.path.exists("/usr/bin/chromium"):
+                options.binary_location = "/usr/bin/chromium"
+            elif os.path.exists("/usr/bin/chromium-browser"):
+                options.binary_location = "/usr/bin/chromium-browser"
+                
+            if os.path.exists("/usr/bin/chromedriver"):
+                driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
+            else:
+                driver = webdriver.Chrome(options=options)
+        else:
+            # Setingan Laptop Windows Mas Arly (Lokal)
+            options.add_argument("--headless=new")
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         
         try:
