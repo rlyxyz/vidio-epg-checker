@@ -299,29 +299,28 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         st.write(f"Menghubungkan ke web Vidio (ID: {channel_id})...")
         
        # Mulai Bot
+        from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.chrome.service import Service
+        from webdriver_manager.chrome import ChromeDriverManager
+        import platform
+
         options = Options()
-        options.add_argument("--headless") 
+        options.add_argument("--headless")
+        options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
-        
-        # --- KUNCI PENYELESAIAN MASALAH (ANTI-CRASH) ---
-        # Mencegah server Streamlit mencekik browser karena masalah izin folder.
-        # Kita paksa browser untuk bekerja di dalam folder sementara (/tmp) yang bebas hambatan.
-        options.add_argument("--user-data-dir=/tmp/chrome-data")
-        options.add_argument("--data-path=/tmp/chrome-data")
-        options.add_argument("--disk-cache-dir=/tmp/chrome-cache")
 
-        import platform
         if platform.system() == "Linux":
-            # Eksekusi aman untuk server Streamlit Cloud
-            options.binary_location = "/usr/bin/chromium"
-            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
+            # KUNCI UTAMA: Wajib menggunakan parameter chrome_type="chromium" 
+            # agar serasi dengan sistem Streamlit Cloud
+            service = Service(ChromeDriverManager(chrome_type="chromium").install())
+            driver = webdriver.Chrome(service=service, options=options)
         else:
             # Setingan Lokal Laptop Windows Mas Arly
             options.add_argument("--headless=new")
-            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=options)
         try:
             driver.get(url_vidio)
             time.sleep(8)
