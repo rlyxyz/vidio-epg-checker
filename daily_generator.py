@@ -312,22 +312,20 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu") # <--- Wajib ditambah untuk server Linux
+        options.add_argument("--disable-gpu")
         options.add_argument("--log-level=3")
         options.add_argument("--window-size=1920,1080")
         options.add_argument("--lang=id")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
         
-        # --- PERBAIKAN: Deteksi otomatis Server (Linux) atau Lokal (Windows) ---
-        import shutil
-        if shutil.which("chromium"):
-            options.binary_location = shutil.which("chromium")
-            
-        if shutil.which("chromedriver"):
-            # Gunakan Chrome bawaan Server Streamlit
-            driver = webdriver.Chrome(service=Service(shutil.which("chromedriver")), options=options)
+        # --- JURUS PAMUNGKAS: Paksa Path Default Linux Server atau Windows Lokal ---
+        import platform
+        if platform.system() == "Linux":
+            # Set lokasi biner Chromium & Driver bawaan paket Linux Debian/Ubuntu di Server
+            options.binary_location = "/usr/bin/chromium"
+            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
         else:
-            # Gunakan Chrome dari laptop Anda
+            # Jika di laptop Windows Mas Arly, gunakan otomatisasi lokal seperti biasa
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         
         try:
