@@ -19,7 +19,6 @@ try:
 except:
     st.set_page_config(page_title="Vidio EPG Checker", page_icon="📺", layout="wide")
 
-# --- FUNGSI UNTUK MENGUBAH GAMBAR BACKGROUND ---
 def get_base64_image(image_path):
     try:
         with open(image_path, "rb") as img_file:
@@ -32,53 +31,18 @@ bg_image_light = get_base64_image("bg_light.png")
 
 custom_css = f"""
 <style>
-/* Menyembunyikan seluruh menu atas (Share, GitHub, Star, dll) */
-[data-testid="stHeader"] {{
-    display: none !important;
-}}
-
-/* --- KODE BACKGROUND DEFAULT (UNTUK TEMA TERANG / LOGO MERAH) --- */
+[data-testid="stHeader"] {{ display: none !important; }}
 [data-testid="stAppViewContainer"]::before {{
-    content: "";
-    position: absolute;
-    top: 0; 
-    left: 0;
-    width: 100%; 
-    height: 100%;
+    content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background-image: url("data:image/png;base64,{bg_image_light}");
-    background-size: 80%; 
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed; 
-    opacity: 0.05; 
-    pointer-events: none; 
-    z-index: 0; 
+    background-size: 80%; background-position: center; background-repeat: no-repeat;
+    background-attachment: fixed; opacity: 0.05; pointer-events: none; z-index: 0; 
 }}
-
-/* --- KODE BACKGROUND OTOMATIS (JIKA MENDETEKSI TEMA GELAP / LOGO PUTIH) --- */
 @media (prefers-color-scheme: dark) {{
-    [data-testid="stAppViewContainer"]::before {{
-        background-image: url("data:image/png;base64,{bg_image_dark}");
-        opacity: 0.05; 
-    }}
+    [data-testid="stAppViewContainer"]::before {{ background-image: url("data:image/png;base64,{bg_image_dark}"); opacity: 0.05; }}
 }}
-
-/* Memastikan konten utama tetap bisa diklik */
-.main {{
-    z-index: 1;
-}}
-
-/* Kustomisasi posisi teks versi di pojok kiri bawah */
-.teks-versi {{
-    position: fixed;
-    bottom: 10px;
-    left: 15px;
-    color: var(--text-color);
-    opacity: 0.7;
-    font-size: 15px;
-    font-weight: bold;
-    z-index: 100;
-}}
+.main {{ z-index: 1; }}
+.teks-versi {{ position: fixed; bottom: 10px; left: 15px; color: var(--text-color); opacity: 0.7; font-size: 15px; font-weight: bold; z-index: 100; }}
 </style>
 <div class="teks-versi">Version 0.1 &copy;Arly</div>
 """
@@ -103,9 +67,6 @@ KNOWN_CHANNELS = {
 URL_SPORT = "https://docs.google.com/spreadsheets/d/1gjT0SPz5dN36MWslyDcRGYOfzmkfTFg4LQKXZfRDhYo/edit?gid=1710292612#gid=1710292612"
 URL_NON_SPORT = "https://docs.google.com/spreadsheets/d/1T9jQGWJHEwzb85tpTLdbo8nyrmnLoLanXk7TxGWEzxM/edit?gid=217062556#gid=217062556"
 
-# =======================================================
-# TEXT & TIME UTILITIES
-# =======================================================
 def bersihkan_teks(teks):
     if not teks: return ""
     teks = str(teks).lower()
@@ -117,8 +78,7 @@ def bersihkan_teks(teks):
     teks = teks.replace('\xa0', ' ').replace('\n', ' ').replace('\t', ' ')
     return re.sub(r'\s+', ' ', teks).strip()
 
-def hancurkan_spasi(teks):
-    return bersihkan_teks(teks).replace(" ", "")
+def hancurkan_spasi(teks): return bersihkan_teks(teks).replace(" ", "")
 
 def fix_time(t):
     if not t: return "00:00"
@@ -131,39 +91,31 @@ def fix_time(t):
 def normalisasi_tanggal(tgl_str):
     tgl_str = str(tgl_str).strip()
     for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d", "%d-%m-%Y"):
-        try:
-            return datetime.strptime(tgl_str, fmt).date()
-        except ValueError:
-            continue
+        try: return datetime.strptime(tgl_str, fmt).date()
+        except ValueError: continue
     return None
 
-# =======================================================
-# GOOGLE SHEETS & LOGIC FUNCTIONS
-# =======================================================
 @st.cache_resource
 def init_gspread():
     scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly", "https://www.googleapis.com/auth/drive.readonly"]
     try:
         if os.path.exists("credentials.json"):
             import json
-            with open("credentials.json", "r") as f:
-                creds_dict = json.load(f)
+            with open("credentials.json", "r") as f: creds_dict = json.load(f)
         else:
             creds_dict = dict(st.secrets["gcp_service_account"])
-            
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         return gspread.authorize(credentials)
     except Exception as e:
-        st.error(f"Gagal membaca rahasia (Secrets) / Credentials. Error: {e}")
+        st.error(f"Gagal membaca rahasia (Secrets). Error: {e}")
         st.stop()
 
 @st.cache_data(ttl=300)
 def fetch_valid_tabs(url):
     gc = init_gspread()
     sh = gc.open_by_url(url)
-    semua_tab = sh.worksheets()
     valid_tabs = []
-    for ws in semua_tab:
+    for ws in sh.worksheets():
         t = ws.title.upper()
         if ("HASIL" in t or "TO CSV" in t) and not any(x in t for x in ["COPY", "TRIAL", "TES", "TEST"]):
             valid_tabs.append(ws.title)
@@ -173,51 +125,34 @@ def fetch_valid_tabs(url):
 def fetch_sheet_data(url, tab_name):
     gc = init_gspread()
     sh = gc.open_by_url(url)
-    ws = sh.worksheet(tab_name)
-    data_mentah = ws.get_all_values()
+    data_mentah = sh.worksheet(tab_name).get_all_values()
     if len(data_mentah) < 2: return pd.DataFrame()
     return pd.DataFrame(data_mentah[1:], columns=data_mentah[0])
 
 # =======================================================
-# MAIN WEB APP TAMPILAN (FRONTEND)
+# MAIN WEB APP TAMPILAN
 # =======================================================
-
 col_logo, col_title = st.columns([1, 15])
 with col_logo:
-    try:
-        st.image("logo_v.jpeg", width=60)
-    except:
-        st.write("V") 
-with col_title:
-    st.title("Vidio EPG Checker")
-    
+    try: st.image("logo_v.jpeg", width=60)
+    except: st.write("V") 
+with col_title: st.title("Vidio EPG Checker")
 st.markdown("---")
 
 col1, col2, col3 = st.columns(3)
-
-# 1. PILIH KATEGORI
 with col1:
     kategori = st.selectbox("1. Pilih Kategori EPG:", ["⚽ Sports", "📺 Non-Sports"])
-    if kategori == "⚽ Sports":
-        target_url = URL_SPORT
-    else:
-        target_url = URL_NON_SPORT
-
-# 2. PILIH CHANNEL
+    target_url = URL_SPORT if kategori == "⚽ Sports" else URL_NON_SPORT
 with col2:
-    try:
-        valid_tabs = fetch_valid_tabs(target_url)
+    try: valid_tabs = fetch_valid_tabs(target_url)
     except Exception as e:
         st.error(f"Gagal terhubung ke Google Sheets. Error: {e}")
         st.stop()
-        
     if not valid_tabs:
         st.error("Tidak ada tab hasil/to csv yang ditemukan!")
         st.stop()
-        
     pilihan_tab = st.selectbox("2. Pilih Channel (Tab):", valid_tabs)
 
-# PROSES DATA MENTAH
 raw_df = fetch_sheet_data(target_url, pilihan_tab)
 if raw_df.empty:
     st.warning("Data di dalam tab ini kosong.")
@@ -237,20 +172,15 @@ else:
 
 raw_df['parsed_date_obj'] = raw_df[col_date].apply(normalisasi_tanggal)
 
-# 3. PILIH TANGGAL
-with col3:
-    pilihan_tgl = st.date_input("3. Pilih Tanggal Jadwal:", value=date.today())
-
+with col3: pilihan_tgl = st.date_input("3. Pilih Tanggal Jadwal:", value=date.today())
 st.markdown("<br>", unsafe_allow_html=True)
 
-# TOMBOL EKSEKUSI
 if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_width=True):
-    
     target_date_obj = pilihan_tgl
     df_filtered = raw_df[raw_df['parsed_date_obj'] == target_date_obj].copy()
     
     if df_filtered.empty:
-        st.error(f"❌ Tidak ada data jadwal untuk tanggal {target_date_obj.strftime('%d-%m-%Y')} di dalam Spreadsheet ini.")
+        st.error(f"❌ Tidak ada data jadwal untuk tanggal {target_date_obj.strftime('%d-%m-%Y')}.")
         st.stop()
         
     df_epg = df_filtered[[col_title, col_start, col_end]].copy()
@@ -258,9 +188,7 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
     df_epg['start_time'] = df_epg['start_time'].apply(fix_time)
     df_epg['end_time'] = df_epg['end_time'].apply(fix_time)
     
-    raw_name = pilihan_tab.upper()
-    raw_name = re.sub(r'[^\w\s]', '', raw_name) 
-    
+    raw_name = re.sub(r'[^\w\s]', '', pilihan_tab.upper()) 
     for kata in ['TO CSV', 'HASIL CSV', 'HASIL', 'CSV', 'JADWAL', 'WIB']:
         raw_name = raw_name.replace(kata, ' ')
     channel_name = re.sub(r'\s+', ' ', raw_name).strip()
@@ -273,14 +201,11 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         'HIP HIP HOREE': 'HIP HIP HORE', 'HOREE': 'HOREE CHANNEL', 'HORE': 'HOREE CHANNEL',           
         'ABC': 'ABC AUSTRALIA', 'NHK': 'NHK JAPAN'
     }
+    if channel_name in exact_aliases: channel_name = exact_aliases[channel_name]
     
-    if channel_name in exact_aliases:
-        channel_name = exact_aliases[channel_name]
-    
-    if channel_name in KNOWN_CHANNELS:
-        channel_id = KNOWN_CHANNELS[channel_name]
+    if channel_name in KNOWN_CHANNELS: channel_id = KNOWN_CHANNELS[channel_name]
     else:
-        st.error(f"Channel '{channel_name}' belum ada di database KNOWN_CHANNELS di dalam skrip.")
+        st.error(f"Channel '{channel_name}' belum ada di database KNOWN_CHANNELS.")
         st.stop()
         
     url_vidio = f"https://www.vidio.com/live/{channel_id}"
@@ -288,16 +213,18 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
     with st.status("Memulai Robot Scraping...", expanded=True) as status:
         st.write(f"Menghubungkan ke web Vidio (ID: {channel_id})...")
         
-        # Mulai Bot (Pindah ke Mozilla Firefox)
-        import platform
         from selenium.webdriver.firefox.options import Options as FirefoxOptions
         from selenium.webdriver.firefox.service import Service as FirefoxService
         from webdriver_manager.firefox import GeckoDriverManager
 
         options = FirefoxOptions()
-        options.add_argument("--headless") # Jalankan tanpa layar
+        options.add_argument("--headless") 
         options.add_argument("--width=1920")
         options.add_argument("--height=1080")
+        
+        # --- JURUS PENYAMARAN ROBOT ---
+        # Kita menyamar sebagai Google Chrome di laptop Windows agar Vidio tidak curiga
+        options.set_preference("general.useragent.override", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
 
         try:
             service = FirefoxService(GeckoDriverManager().install())
@@ -308,40 +235,8 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
             
         try:
             driver.get(url_vidio)
-            
-            # --- PENAMBAHAN WAKTU TUNGGU MENJADI 10 DETIK ---
             st.write("Menunggu halaman web Vidio dimuat sepenuhnya (10 detik)...")
             time.sleep(10)
-            
-            # Navigasi kalender
-            st.write(f"Mencari jadwal untuk tanggal {target_date_obj.day}...")
-            selisih_hari = (target_date_obj - date.today()).days
-            if selisih_hari > 0:
-                angka_tgl = str(target_date_obj.day)
-                bulan_map = {1: 'jan', 2: 'feb', 3: 'mar', 4: 'apr', 5: 'mei', 6: 'jun', 7: 'jul', 8: 'agu', 9: 'sep', 10: 'okt', 11: 'nov', 12: 'des'}
-                keyword_bulan = bulan_map[target_date_obj.month]
-                elements = driver.find_elements("xpath", "//span | //button | //a | //div")
-                
-                berhasil_klik = False
-                if selisih_hari == 1:
-                    for el in elements:
-                        teks = el.text.strip().lower() if el.text else ""
-                        if 'besok' in teks or 'tomorrow' in teks:
-                            if len(teks) < 30:
-                                driver.execute_script("arguments[0].click();", el)
-                                berhasil_klik = True
-                                time.sleep(5)
-                                break
-                if not berhasil_klik:
-                    elements_sorted = sorted(elements, key=lambda x: len(x.text.strip()) if x.text else 999)
-                    for el in elements_sorted:
-                        teks = el.text.strip().lower() if el.text else ""
-                        if not teks or len(teks) > 40: continue
-                        match_angka = re.search(rf"(^|\D)0?{angka_tgl}(\D|$)", teks)
-                        if match_angka and keyword_bulan in teks:
-                            driver.execute_script("arguments[0].click();", el)
-                            time.sleep(5)
-                            break
             
             # Auto-click Show More
             try:
@@ -357,6 +252,11 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
             except Exception: pass
             
             st.write("Menarik data HTML...")
+            
+            # --- KAMERA CCTV ROBOT ---
+            # Mengambil screenshot dari apa yang sebenarnya dilihat robot
+            driver.save_screenshot("mata_robot.png")
+            
             soup = BeautifulSoup(driver.page_source, 'html.parser')
             web_schedules = []
             
@@ -383,9 +283,12 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
 
     # PROSES VERIFIKASI
     if not web_schedules:
-        st.error("Jadwal tidak terbaca dari web Vidio. Berikut adalah teks mentah yang ditangkap oleh robot:")
-        # --- CCTV ROBOT: Tampilkan 3000 huruf pertama dari web Vidio ke layar ---
-        st.code(soup.get_text(" ")[:3000], language="text")
+        st.error("Jadwal tidak terbaca dari web Vidio. Berikut adalah tangkapan layar (foto) apa yang dilihat robot:")
+        try:
+            # Menampilkan hasil jepretan kamera robot ke web Streamlit
+            st.image("mata_robot.png", caption="Layar Web Vidio versi Robot")
+        except:
+            pass
         st.stop()
         
     hasil_error = []
@@ -395,11 +298,8 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         judul_csv_no_space = hancurkan_spasi(row['title'])
         start_csv = row['start_time']
         
-        try:
-            jam_int = int(start_csv.split(":")[0])
-            menit_str = start_csv.split(":")[1]
-        except:
-            jam_int, menit_str = 0, "00"
+        try: jam_int = int(start_csv.split(":")[0]); menit_str = start_csv.split(":")[1]
+        except: jam_int, menit_str = 0, "00"
             
         kemungkinan_waktu = [start_csv]
         if jam_int <= 12: kemungkinan_waktu.append(f"{str(jam_int + 12).zfill(2)}:{menit_str}")
@@ -424,18 +324,12 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
                     break
 
         if not is_match:
-            hasil_error.append({
-                "Jam Mulai": row['start_time'],
-                "Jam Selesai": row['end_time'],
-                "Judul Program (Tidak Sinkron)": row['title']
-            })
+            hasil_error.append({"Jam Mulai": row['start_time'], "Jam Selesai": row['end_time'], "Judul Program": row['title']})
 
-    # TAMPILAN HASIL (REPORT)
     st.markdown("### 📊 Laporan Hasil Pengecekan")
     if len(hasil_error) == 0:
         st.success(f"🎉 SUKSES! 100% Jadwal Sinkron untuk {channel_name} (Tanggal: {pilihan_tgl.strftime('%d-%m-%Y')})")
         st.balloons()
     else:
         st.error(f"⚠️ Ditemukan {len(hasil_error)} jadwal di Spreadsheet yang BELUM ADA / BERBEDA dengan tayangan live di Vidio:")
-        df_error = pd.DataFrame(hasil_error)
-        st.dataframe(df_error, use_container_width=True)
+        st.dataframe(pd.DataFrame(hasil_error), use_container_width=True)
