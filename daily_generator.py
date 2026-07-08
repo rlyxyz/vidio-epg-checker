@@ -300,26 +300,38 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         
        # Mulai Bot
         options = Options()
+        
+        # --- PERTAHANAN RAM & CPU (Untuk Server Cloud Gratisan) ---
         options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-dev-shm-usage") # Wajib untuk RAM kecil
         options.add_argument("--disable-gpu")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--blink-settings=imagesEnabled=false") # Matikan gambar agar bot lari super cepat!
         options.add_argument("--window-size=1920,1080")
 
         import platform
+        import shutil
+
         if platform.system() == "Linux":
             options.add_argument("--headless")
-            options.add_argument("--remote-debugging-port=9222") # Port komunikasi darurat wajib untuk Docker
-            options.binary_location = "/usr/bin/chromium"
             
-            # --- KUNCI FINAL ---
-            # Kita HAPUS paksaan jalur chromedriver yang cacat. 
-            # Biarkan sistem cerdas bawaan Selenium 4 yang mengatur semuanya otomatis!
-            driver = webdriver.Chrome(options=options)
+            # Gunakan radar otomatis untuk mencari lokasi Chromium di dalam Debian
+            chrome_path = shutil.which("chromium") or shutil.which("chromium-browser")
+            driver_path = shutil.which("chromedriver")
+            
+            if chrome_path:
+                options.binary_location = chrome_path
+                
+            if driver_path:
+                driver = webdriver.Chrome(service=Service(driver_path), options=options)
+            else:
+                # Jika gagal menemukan driver Linux, biarkan Selenium 4 bekerja
+                driver = webdriver.Chrome(options=options)
         else:
-            # Setingan Lokal Laptop Windows
+            # Setingan Lokal Laptop Windows (Normal)
             options.add_argument("--headless=new")
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-        
         try:
             driver.get(url_vidio)
             time.sleep(8)
