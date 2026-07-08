@@ -1,12 +1,11 @@
 import base64
 import os
 import re
-import time
 import unicodedata
 from datetime import datetime, date, timedelta
 import pandas as pd
 from bs4 import BeautifulSoup
-from selenium import webdriver
+import requests
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
@@ -211,53 +210,21 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
     url_vidio = f"https://www.vidio.com/live/{channel_id}"
 
     with st.status("Memulai Robot Scraping...", expanded=True) as status:
-        st.write(f"Menghubungkan ke web Vidio (ID: {channel_id})...")
+        st.write(f"Menghubungkan senyap ke Vidio API (ID: {channel_id})...")
         
-        from selenium.webdriver.firefox.options import Options as FirefoxOptions
-        from selenium.webdriver.firefox.service import Service as FirefoxService
-        from webdriver_manager.firefox import GeckoDriverManager
-
-        options = FirefoxOptions()
-        options.add_argument("--headless") 
-        options.add_argument("--width=1920")
-        options.add_argument("--height=1080")
+        # --- JURUS OPERASI SENYAP (TANPA BROWSER / REQUESTS ONLY) ---
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Referer": "https://www.vidio.com/"
+        }
         
-        options.set_preference("general.useragent.override", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
-
         try:
-            service = FirefoxService(GeckoDriverManager().install())
-            driver = webdriver.Firefox(service=service, options=options)
-        except Exception as e:
-            st.error(f"❌ Robot Firefox gagal menyala: {e}")
-            st.stop()
-            
-        try:
-            # --- STRATEGI DIKEMBALIKAN KE TEMBAK LANGSUNG ---
-            st.write(f"Menghubungkan langsung ke halaman live channel (ID: {channel_id})...")
-            driver.get(url_vidio) 
-            
-            # --- WAKTU TUNGGU DISESUAIKAN MENJADI 8 DETIK ---
-            st.write("Menunggu halaman web Vidio dimuat sepenuhnya (8 detik)...")
-            time.sleep(8)
-            
-            try:
-                driver.execute_script("window.scrollTo(0, document.body.scrollHeight/3);")
-                time.sleep(1)
-                all_elements = driver.find_elements("xpath", "//button | //span | //a")
-                for btn in all_elements:
-                    txt = btn.text.strip().lower() if btn.text else ""
-                    if 'show' in txt or 'lihat' in txt or 'more' in txt:
-                        driver.execute_script("arguments[0].click();", btn)
-                        time.sleep(2)
-                        break
-            except Exception: pass
-            
-            st.write("Menarik data HTML...")
-            driver.save_screenshot("mata_robot.png")
-            
-            soup = BeautifulSoup(driver.page_source, 'html.parser')
+            response = requests.get(url_vidio, headers=headers, timeout=15)
+            soup = BeautifulSoup(response.text, 'html.parser')
             web_schedules = []
             
+            st.write("Mengekstrak data jadwal...")
             for element in soup.find_all(['div', 'li', 'p', 'span']):
                 text_item = element.get_text(" ").strip()
                 if not text_item or len(text_item) > 300: continue
@@ -275,21 +242,19 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
                 web_schedules = [{'start': fix_time(m[0]), 'end': fix_time(m[1]), 'title_clean': bersihkan_teks(m[2]), 'title_no_space': hancurkan_spasi(m[2])} for m in fallback_matches]
             
             status.update(label="Scraping Selesai! Melakukan Verifikasi Sinkronisasi...", state="complete", expanded=False)
-            
-        finally:
-            driver.quit()
+        except Exception as e:
+            st.error(f"Gagal mengambil data dari Vidio: {e}")
+            st.stop()
 
     if not web_schedules:
-        st.error("Jadwal tidak terbaca dari web Vidio. Berikut adalah tangkapan layar (foto) apa yang dilihat robot:")
-        try: st.image("mata_robot.png", caption="Layar Web Vidio versi Robot")
-        except: pass
+        st.error("Jadwal tidak terbaca. Struktur halaman Vidio kosong atau Anda terblokir sistem keamanan.")
         st.stop()
         
     hasil_error = []
     
     for _, row in df_epg.iterrows():
         judul_csv_bersih = bersihkan_teks(row['title'])
-        judul_csv_no_space = hancurkan_spasi(row['title'])
+        judul_csv_no_space = hancurkan_asli = hancurkan_spasi(row['title'])
         start_csv = row['start_time']
         
         try: jam_int = int(start_csv.split(":")[0]); menit_str = start_csv.split(":")[1]
