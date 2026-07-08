@@ -298,26 +298,25 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
     with st.status("Memulai Robot Scraping...", expanded=True) as status:
         st.write(f"Menghubungkan ke web Vidio (ID: {channel_id})...")
         
-        # Mulai Bot
+       # Mulai Bot
         options = Options()
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
-        options.add_argument("--disable-features=NetworkService") # Cegah crash jaringan di Debian
-        options.add_argument("--disable-features=VizDisplayCompositor") # Cegah crash grafis
         options.add_argument("--window-size=1920,1080")
 
         import platform
+        import shutil
+
         if platform.system() == "Linux":
             options.add_argument("--headless")
-            options.binary_location = "/usr/bin/chromium"
             
-            try:
-                # Opsi 1: Gunakan jembatan driver bawaan server
-                driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
-            except Exception:
-                # Opsi 2: Jika Opsi 1 mogok, biarkan sistem Selenium 4 yang mencari jalan otomatis
-                driver = webdriver.Chrome(options=options)
+            # --- DETEKSI OTOMATIS JALUR LINUX ---
+            chrome_path = shutil.which("chromium") or shutil.which("chromium-browser") or "/usr/bin/chromium"
+            driver_path = shutil.which("chromedriver") or "/usr/bin/chromedriver"
+            
+            options.binary_location = chrome_path
+            driver = webdriver.Chrome(service=Service(driver_path), options=options)
         else:
             # Setingan Lokal Laptop Windows
             options.add_argument("--headless=new")
