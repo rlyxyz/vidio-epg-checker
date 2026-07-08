@@ -1,0 +1,7 @@
+streamlit
+pandas
+beautifulsoup4
+selenium
+webdriver-manager
+gspread
+google-auth
