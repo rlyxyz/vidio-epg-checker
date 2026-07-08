@@ -303,26 +303,23 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
-        options.add_argument("--log-level=3")
+        options.add_argument("--disable-features=NetworkService") # Cegah crash jaringan di Debian
+        options.add_argument("--disable-features=VizDisplayCompositor") # Cegah crash grafis
         options.add_argument("--window-size=1920,1080")
-        options.add_argument("--lang=id")
-        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
         import platform
         if platform.system() == "Linux":
-            # 🛑 KUNCI UTAMA: Headless klasik murni (TIDAK ADA =new)
             options.add_argument("--headless")
+            options.binary_location = "/usr/bin/chromium"
             
-            # Kunci ke aplikasi Chromium hasil instalasi packages.txt
-            import os
-            if os.path.exists("/usr/bin/chromium"):
-                options.binary_location = "/usr/bin/chromium"
-            elif os.path.exists("/usr/bin/chromium-browser"):
-                options.binary_location = "/usr/bin/chromium-browser"
-                
-            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
+            try:
+                # Opsi 1: Gunakan jembatan driver bawaan server
+                driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
+            except Exception:
+                # Opsi 2: Jika Opsi 1 mogok, biarkan sistem Selenium 4 yang mencari jalan otomatis
+                driver = webdriver.Chrome(options=options)
         else:
-            # Setingan Laptop Windows Mas Arly (Lokal)
+            # Setingan Lokal Laptop Windows
             options.add_argument("--headless=new")
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         
