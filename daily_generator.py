@@ -299,31 +299,35 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         st.write(f"Menghubungkan ke web Vidio (ID: {channel_id})...")
         
        # Mulai Bot
-        import os
         import platform
+        import tempfile
         from selenium.webdriver.chrome.options import Options
         from selenium.webdriver.chrome.service import Service
+        from webdriver_manager.chrome import ChromeDriverManager
+        from webdriver_manager.core.os_manager import ChromeType
 
         options = Options()
-        options.add_argument("--headless") 
+        # Gunakan mode headless terbaru
+        options.add_argument("--headless=new") 
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
-        options.add_argument("--disable-features=VizDisplayCompositor") # Mencegah crash grafis
+        
+        # Buat folder kerja sementara yang 100% diizinkan oleh Streamlit
+        temp_dir = tempfile.mkdtemp()
+        options.add_argument(f"--user-data-dir={temp_dir}")
+        options.add_argument(f"--data-path={temp_dir}")
+        options.add_argument(f"--disk-cache-dir={temp_dir}")
 
         if platform.system() == "Linux":
-            # --- JURUS ANTI-CRASH FINAL: SUNTIK MATI SENSOR LAYAR ---
-            # Mencegah Chromium bunuh diri saat mencari layar fisik di server Cloud
-            os.environ["DBUS_SESSION_BUS_ADDRESS"] = "/dev/null"
-            
+            # Tunjuk ke browser bawaan Streamlit
             options.binary_location = "/usr/bin/chromium"
-            service = Service("/usr/bin/chromedriver")
+            # KUNCI UTAMA: Paksa Python mencari driver yang spesifik untuk tipe CHROMIUM Linux
+            service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
             driver = webdriver.Chrome(service=service, options=options)
         else:
-            # Setingan Lokal Laptop Windows
-            from webdriver_manager.chrome import ChromeDriverManager
-            options.add_argument("--headless=new")
+            # Setingan Lokal Laptop Windows Mas Arly
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
         try:
