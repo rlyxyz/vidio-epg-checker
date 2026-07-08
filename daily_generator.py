@@ -299,28 +299,31 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         st.write(f"Menghubungkan ke web Vidio (ID: {channel_id})...")
         
        # Mulai Bot
+        import os
+        import platform
         from selenium.webdriver.chrome.options import Options
         from selenium.webdriver.chrome.service import Service
-        import platform
 
         options = Options()
-        # KUNCI UTAMA: Wajib pakai --headless klasik (TANPA =new) untuk server Streamlit
         options.add_argument("--headless") 
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
-        options.add_argument("--disable-features=NetworkService")
         options.add_argument("--window-size=1920,1080")
+        options.add_argument("--disable-features=VizDisplayCompositor") # Mencegah crash grafis
 
         if platform.system() == "Linux":
-            # Tembak langsung ke Chromium bawaan server Streamlit
+            # --- JURUS ANTI-CRASH FINAL: SUNTIK MATI SENSOR LAYAR ---
+            # Mencegah Chromium bunuh diri saat mencari layar fisik di server Cloud
+            os.environ["DBUS_SESSION_BUS_ADDRESS"] = "/dev/null"
+            
             options.binary_location = "/usr/bin/chromium"
             service = Service("/usr/bin/chromedriver")
             driver = webdriver.Chrome(service=service, options=options)
         else:
-            # Setingan Lokal Laptop Windows Mas Arly
+            # Setingan Lokal Laptop Windows
             from webdriver_manager.chrome import ChromeDriverManager
-            options.add_argument("--headless=new") # Lokal Windows aman pakai =new
+            options.add_argument("--headless=new")
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
         try:
