@@ -7,9 +7,6 @@ from datetime import datetime, date, timedelta
 import pandas as pd
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
@@ -48,13 +45,12 @@ custom_css = f"""
     left: 0;
     width: 100%; 
     height: 100%;
-    /* Memanggil gambar base64 logo MERAH */
     background-image: url("data:image/png;base64,{bg_image_light}");
-    background-size: 80%; /* Dibuat SANGAT BESAR */
+    background-size: 80%; 
     background-position: center;
     background-repeat: no-repeat;
     background-attachment: fixed; 
-    opacity: 0.05; /* Transparansi untuk logo merah di background putih */
+    opacity: 0.05; 
     pointer-events: none; 
     z-index: 0; 
 }}
@@ -62,9 +58,8 @@ custom_css = f"""
 /* --- KODE BACKGROUND OTOMATIS (JIKA MENDETEKSI TEMA GELAP / LOGO PUTIH) --- */
 @media (prefers-color-scheme: dark) {{
     [data-testid="stAppViewContainer"]::before {{
-        /* Menimpa gambar menjadi logo PUTIH */
         background-image: url("data:image/png;base64,{bg_image_dark}");
-        opacity: 0.05; /* Transparansi untuk logo putih di background hitam */
+        opacity: 0.05; 
     }}
 }}
 
@@ -149,14 +144,11 @@ def normalisasi_tanggal(tgl_str):
 def init_gspread():
     scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly", "https://www.googleapis.com/auth/drive.readonly"]
     try:
-        # STRATEGI BARU: Cek file di laptop dulu. Jika ada, langsung pakai!
-        # Ini membuat Streamlit lokal tidak perlu menyentuh st.secrets sehingga tidak crash.
         if os.path.exists("credentials.json"):
             import json
             with open("credentials.json", "r") as f:
                 creds_dict = json.load(f)
         else:
-            # Jika file tidak ada di folder, berarti ini sedang berjalan di Web Cloud
             creds_dict = dict(st.secrets["gcp_service_account"])
             
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
@@ -243,10 +235,9 @@ else:
     col_start = [c for c in raw_df.columns if 'jam tayang' in c.lower() or 'start_time' in c.lower()][0]
     col_end = [c for c in raw_df.columns if 'jam selesai' in c.lower() or 'end_time' in c.lower()][0]
 
-# Menyiapkan kolom tanggal ter-parsing untuk filter nanti
 raw_df['parsed_date_obj'] = raw_df[col_date].apply(normalisasi_tanggal)
 
-# 3. PILIH TANGGAL MENGGUNAKAN KALENDER
+# 3. PILIH TANGGAL
 with col3:
     pilihan_tgl = st.date_input("3. Pilih Tanggal Jadwal:", value=date.today())
 
@@ -267,7 +258,6 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
     df_epg['start_time'] = df_epg['start_time'].apply(fix_time)
     df_epg['end_time'] = df_epg['end_time'].apply(fix_time)
     
-    # --- SMART ALIAS LOGIC (Pencocokan Persis) ---
     raw_name = pilihan_tab.upper()
     raw_name = re.sub(r'[^\w\s]', '', raw_name) 
     
@@ -298,7 +288,7 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
     with st.status("Memulai Robot Scraping...", expanded=True) as status:
         st.write(f"Menghubungkan ke web Vidio (ID: {channel_id})...")
         
-       # Mulai Bot (Pindah ke Mozilla Firefox)
+        # Mulai Bot (Pindah ke Mozilla Firefox)
         import platform
         from selenium.webdriver.firefox.options import Options as FirefoxOptions
         from selenium.webdriver.firefox.service import Service as FirefoxService
@@ -309,17 +299,19 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         options.add_argument("--width=1920")
         options.add_argument("--height=1080")
 
-        # Firefox sangat stabil di server Linux, kita tidak butuh trik anti-crash yang rumit!
         try:
-            # GeckoDriverManager akan otomatis mencocokkan driver untuk Streamlit (Linux) maupun Laptop (Windows)
             service = FirefoxService(GeckoDriverManager().install())
             driver = webdriver.Firefox(service=service, options=options)
         except Exception as e:
             st.error(f"❌ Robot Firefox gagal menyala: {e}")
             st.stop()
+            
         try:
             driver.get(url_vidio)
-            time.sleep(8)
+            
+            # --- PENAMBAHAN WAKTU TUNGGU MENJADI 10 DETIK ---
+            st.write("Menunggu halaman web Vidio dimuat sepenuhnya (10 detik)...")
+            time.sleep(10)
             
             # Navigasi kalender
             st.write(f"Mencari jadwal untuk tanggal {target_date_obj.day}...")
