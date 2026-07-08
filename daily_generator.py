@@ -222,7 +222,6 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         options.add_argument("--width=1920")
         options.add_argument("--height=1080")
         
-        # --- JURUS PENYAMARAN ROBOT ---
         options.set_preference("general.useragent.override", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
 
         try:
@@ -233,18 +232,14 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
             st.stop()
             
         try:
-            # --- JURUS PENYAMARAN ALUR MANUSIA (ANTI-REDIRECT) ---
-            st.write("Membuka Beranda Vidio untuk verifikasi koneksi...")
-            driver.get("https://www.vidio.com/") 
-            time.sleep(3)
-            
-            st.write(f"Masuk ke halaman live channel (ID: {channel_id})...")
+            # --- STRATEGI DIKEMBALIKAN KE TEMBAK LANGSUNG ---
+            st.write(f"Menghubungkan langsung ke halaman live channel (ID: {channel_id})...")
             driver.get(url_vidio) 
             
-            st.write("Menunggu halaman web Vidio dimuat sepenuhnya (10 detik)...")
-            time.sleep(10)
+            # --- WAKTU TUNGGU DISESUAIKAN MENJADI 8 DETIK ---
+            st.write("Menunggu halaman web Vidio dimuat sepenuhnya (8 detik)...")
+            time.sleep(8)
             
-            # Auto-click Show More
             try:
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight/3);")
                 time.sleep(1)
@@ -258,8 +253,6 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
             except Exception: pass
             
             st.write("Menarik data HTML...")
-            
-            # --- KAMERA CCTV ROBOT ---
             driver.save_screenshot("mata_robot.png")
             
             soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -286,13 +279,10 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         finally:
             driver.quit()
 
-    # PROSES VERIFIKASI
     if not web_schedules:
         st.error("Jadwal tidak terbaca dari web Vidio. Berikut adalah tangkapan layar (foto) apa yang dilihat robot:")
-        try:
-            st.image("mata_robot.png", caption="Layar Web Vidio versi Robot")
-        except:
-            pass
+        try: st.image("mata_robot.png", caption="Layar Web Vidio versi Robot")
+        except: pass
         st.stop()
         
     hasil_error = []
