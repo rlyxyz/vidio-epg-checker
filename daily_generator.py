@@ -310,28 +310,26 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
        # Mulai Bot
         options = Options()
         
-        # --- PERBAIKAN SUPER STABIL UNTUK SERVER INTERNET ---
         import platform
         if platform.system() == "Linux":
-            # Server Linux wajib pakai mode headless klasik agar tidak crash karena kekurangan komponen grafis
+            # 1. Menggunakan Headless Klasik (Wajib untuk kestabilan server Linux)
             options.add_argument("--headless") 
-        else:
-            # Laptop Windows Mas Arly tetap pakai mode baru tidak apa-apa
-            options.add_argument("--headless=new")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-gpu")
+            options.add_argument("--disable-extensions")
             
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--log-level=3")
-        options.add_argument("--window-size=1920,1080")
-        options.add_argument("--lang=id")
-        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-        
-        # Serahkan pencarian jalur driver ke sistem otomatis Selenium 4 (Lebih Aman & Akurat)
-        if platform.system() == "Linux":
-            driver = webdriver.Chrome(options=options)
+            # 2. Mengunci jalur browser Chromium secara tegas
+            options.binary_location = "/usr/bin/chromium"
+            
+            # 3. Menyalakan driver dengan jalur paten Linux Server
+            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
         else:
+            # Setingan aman khusus untuk laptop Windows Mas Arly agar tidak ikut rusak
+            options.add_argument("--headless=new")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--log-level=3")
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         
         try:
