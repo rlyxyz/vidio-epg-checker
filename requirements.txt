@@ -1,7 +1,7 @@
 streamlit
 pandas
 beautifulsoup4
-selenium
+selenium>=4.15.0
 webdriver-manager
 gspread
 google-auth
