@@ -301,24 +301,26 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
        # Mulai Bot
         from selenium.webdriver.chrome.options import Options
         from selenium.webdriver.chrome.service import Service
-        from webdriver_manager.chrome import ChromeDriverManager
         import platform
 
         options = Options()
-        options.add_argument("--headless")
-        options.add_argument("--disable-gpu")
+        # Wajib pakai =new untuk Chromium versi terbaru di server Debian
+        options.add_argument("--headless=new") 
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
 
         if platform.system() == "Linux":
-            # KUNCI UTAMA: Wajib menggunakan parameter chrome_type="chromium" 
-            # agar serasi dengan sistem Streamlit Cloud
-            service = Service(ChromeDriverManager(chrome_type="chromium").install())
+            # KUNCI FINAL: JANGAN pakai webdriver_manager di Streamlit Cloud!
+            # Kita tembak langsung ke aplikasi yang di-install oleh packages.txt
+            options.binary_location = "/usr/bin/chromium"
+            service = Service("/usr/bin/chromedriver")
+            
             driver = webdriver.Chrome(service=service, options=options)
         else:
-            # Setingan Lokal Laptop Windows Mas Arly
-            options.add_argument("--headless=new")
+            # Setingan Lokal Laptop Windows Mas Arly (Tetap pakai auto-download)
+            from webdriver_manager.chrome import ChromeDriverManager
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
         try:
