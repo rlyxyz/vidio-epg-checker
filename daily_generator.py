@@ -312,20 +312,25 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         
         import platform
         if platform.system() == "Linux":
-            # 1. Menggunakan Headless Klasik (Wajib untuk kestabilan server Linux)
+            # PARAMETER WAJIB UNTUK MENEMBUS PROTEKSI SERVER LINUX CLOUD
             options.add_argument("--headless") 
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
             options.add_argument("--disable-gpu")
+            options.add_argument("--disable-setuid-sandbox") # <--- Menembus batasan hak akses Docker
+            options.add_argument("--remote-debugging-port=9222") # <--- Membuka port komunikasi internal
             options.add_argument("--disable-extensions")
             
-            # 2. Mengunci jalur browser Chromium secara tegas
-            options.binary_location = "/usr/bin/chromium"
-            
-            # 3. Menyalakan driver dengan jalur paten Linux Server
-            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
+            # SISTEM AUTO-FALLBACK (Mencari jalur terbaik otomatis)
+            try:
+                # Cara 1: Biarkan Selenium 4 mencari sendiri secara otomatis di dalam sistem
+                driver = webdriver.Chrome(options=options)
+            except Exception:
+                # Cara 2: Jika Cara 1 gagal, paksa arahkan ke jalur paten Linux
+                options.binary_location = "/usr/bin/chromium"
+                driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
         else:
-            # Setingan aman khusus untuk laptop Windows Mas Arly agar tidak ikut rusak
+            # Setingan aman khusus untuk laptop Windows Mas Arly
             options.add_argument("--headless=new")
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
