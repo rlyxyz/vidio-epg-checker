@@ -300,17 +300,21 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         
        # Mulai Bot
         options = Options()
-        options.add_argument("--headless=new")
+        options.add_argument("--headless") # Gunakan headless klasik tanpa =new
         options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-dev-shm-usage") # Mencegah kehabisan RAM
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
 
-        # --- JURUS PAMUNGKAS ---
-        # Tidak perlu lagi deteksi jalur Linux/Windows yang rumit.
-        # Otak pintar Selenium Manager akan otomatis mengunduh & menyocokkan
-        # Google Chrome murni (baik di server Cloud maupun di laptop lokal)!
-        driver = webdriver.Chrome(options=options)
+        import platform
+        if platform.system() == "Linux":
+            # Tembak langsung ke lokasi instalasi dari packages.txt
+            options.binary_location = "/usr/bin/chromium"
+            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
+        else:
+            # Setingan Lokal Laptop Windows Mas Arly
+            options.add_argument("--headless=new")
+            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         try:
             driver.get(url_vidio)
             time.sleep(8)
