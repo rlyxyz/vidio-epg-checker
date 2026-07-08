@@ -35,9 +35,10 @@ bg_image_light = get_base64_image("bg_light.png")
 
 custom_css = f"""
 <style>
-/* Menyembunyikan KHUSUS tombol Deploy saja */
-[data-testid="stAppDeployButton"] {{display: none !important;}}
-.stDeployButton {{display:none !important;}}
+/* Menyembunyikan seluruh menu atas (Share, GitHub, Star, dll) */
+[data-testid="stHeader"] {{
+    display: none !important;
+}}
 
 /* --- KODE BACKGROUND DEFAULT (UNTUK TEMA TERANG / LOGO MERAH) --- */
 [data-testid="stAppViewContainer"]::before {{
