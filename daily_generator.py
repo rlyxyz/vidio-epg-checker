@@ -300,21 +300,30 @@ if st.button("🚀 Jalankan Pengecekan Harian", type="primary", use_container_wi
         
         # Mulai Bot
         options = Options()
-        options.add_argument("--headless=new") # Menggunakan headless modern
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
+        options.add_argument("--log-level=3")
         options.add_argument("--window-size=1920,1080")
         options.add_argument("--lang=id")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
         import platform
         if platform.system() == "Linux":
-            # Setelah Python di-downgrade, kita tidak perlu menebak jalur manual lagi.
-            # Serahkan sepenuhnya ke sistem otomatis Selenium 4 agar mendeteksi Chromium sendiri.
-            driver = webdriver.Chrome(options=options)
+            # 🛑 KUNCI UTAMA: Headless klasik murni (TIDAK ADA =new)
+            options.add_argument("--headless")
+            
+            # Kunci ke aplikasi Chromium hasil instalasi packages.txt
+            import os
+            if os.path.exists("/usr/bin/chromium"):
+                options.binary_location = "/usr/bin/chromium"
+            elif os.path.exists("/usr/bin/chromium-browser"):
+                options.binary_location = "/usr/bin/chromium-browser"
+                
+            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
         else:
             # Setingan Laptop Windows Mas Arly (Lokal)
+            options.add_argument("--headless=new")
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         
         try:
