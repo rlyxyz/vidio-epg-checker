@@ -1,0 +1,20 @@
+# Kredensial & Akun Service (Jangan Ke-push ke GitHub)
+credentials.json
+cookies.json
+svc-acc.zip
+.env
+
+# File Storage / Data Lokal Dynamic
+custom_channels.json
+
+# File Temporary, Debug & Backup
+daily_generator backup.py
+backup_rill.py
+debug_page.html
+
+# Python Environment & Cache
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+ENV/
