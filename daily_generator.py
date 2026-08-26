@@ -295,16 +295,19 @@ body.light-theme .switch-label {{
     appearance: none !important;
     -webkit-appearance: none !important;
 }}
-div[data-testid="stInputInstructions"],
-div[data-testid="stInputInstructions"] *,
-small[data-testid="stWidgetInstructions"],
-[data-testid="stWidgetInstructions"],
+.stTextInput input ~ div,
+.stTextInput input ~ span,
+.stTextInput input + div,
+.stTextInput input + span,
+.stTextInput [data-testid*="nstruction"],
+.stTextInput [data-testid*="Instruction"],
 .stTextInput small {{
     display: none !important;
     visibility: hidden !important;
     opacity: 0 !important;
     height: 0 !important;
     width: 0 !important;
+    position: absolute !important;
     pointer-events: none !important;
 }}
 .slider {{
