@@ -295,7 +295,9 @@ body.light-theme .switch-label {{
     appearance: none !important;
     -webkit-appearance: none !important;
 }}
-
+div[data-testid="stInputInstructions"] {{
+    display: none !important;
+}}
 .slider {{
     position: absolute; width: 34px; height: 34px; top: 5px; left: 6px; border-radius: 50%; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
     background-color: #f6f1d5; box-shadow: 0 0 15px #f6f1d5, inset -4px -4px 0px rgba(0,0,0,0.1);
