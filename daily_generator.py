@@ -15,6 +15,11 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 from PIL import Image
+if "cms_text_data" not in st.session_state:
+    st.session_state["cms_text_data"] = ""
+
+def sync_channel_callback():
+    st.session_state["active_channel"] = st.session_state["sync_channel_select"]
 
 # =======================================================
 # STREAMLIT CONFIGURATION UI
@@ -678,7 +683,7 @@ with col_tengah:
     # FITUR SYNC CMS KE TAB GOOGLE SHEET (SAFE APPEND/REPLACE)
     # =======================================================
     with st.expander("🔄 Sync Data CMS ke Google Sheet", expanded=False):
-        st.markdown("##### Update Tab Spreadsheet (Hanya Tanggal Terkait)")
+        st.markdown("##### Update Tab Spreadsheet")
 
         sc_col1, sc_col2 = st.columns([1, 2])
         with sc_col1:
@@ -691,100 +696,110 @@ with col_tengah:
                 available_tabs = []
                 
             if available_tabs:
-                selected_tab = st.selectbox("Pilih Target Tab Sheet:", available_tabs, key="sync_chan")
+                selected_tab = st.selectbox("Pilih Target Tab Sheet:", available_tabs, key="sync_channel_select", on_change=sync_channel_callback)
                 st.caption(f"📌 Target Tab: **{selected_tab}**")
             else:
                 st.error("Gagal membaca tab dari Google Sheet.")
                 selected_tab = None
 
         with sc_col2:
+            if st.session_state.get("clear_cms_text", False):
+                st.session_state["cms_text_data"] = ""
+                st.session_state["clear_cms_text"] = False
+
             cms_raw_input = st.text_area(
                 "Paste tabel dari CMS di sini:",
                 height=150,
-                placeholder="PENTING: Block dari JUDUL HEADER (TITLE, START TIME, dll) lalu Copy & Paste di sini...",
-                key="sync_raw"
+                placeholder="PENTING: Block dari JUDUL HEADER (TITLE, START TIME, dll) lalu Copy & Paste...",
+                key="cms_text_data"
             )
 
-        if st.button("🚀 Update Tab Sheet Sekarang", key="btn_do_sync"):
-            if not cms_raw_input.strip():
-                st.warning("⚠️ Silakan paste tabel dari CMS terlebih dahulu!")
-            elif not selected_tab:
-                st.error("⚠️ Silakan pilih Tab Target terlebih dahulu!")
-            else:
-                try:
-                    # 1. Parse Teks Clipboard (\t) dari CMS
-                    df_raw = pd.read_csv(io.StringIO(cms_raw_input), sep="\t")
-                    df_raw.columns = [str(c).strip().upper() for c in df_raw.columns]
-                    
-                    col_title = next((c for c in df_raw.columns if "TITLE" in c or "JUDUL" in c), None)
-                    col_start = next((c for c in df_raw.columns if "START" in c or "MULAI" in c), None)
-                    col_end = next((c for c in df_raw.columns if "END" in c or "SELESAI" in c), None)
-                    col_epg = next((c for c in df_raw.columns if "EPG" in c), None)
-                    
-                    if not col_title or not col_start or not col_end:
-                        st.error("❌ Header tabel tidak terdeteksi! Pastikan baris judul kolom (TITLE, START TIME) ikut ter-copy.")
-                        st.stop()
-                    
-                    # 2. Format Data CMS Baru
-                    df_new = pd.DataFrame()
-                    start_dt = pd.to_datetime(df_raw[col_start], errors='coerce')
-                    end_dt = pd.to_datetime(df_raw[col_end], errors='coerce')
-                    
-                    df_new['Title'] = df_raw[col_title]
-                    df_new['UPPER TITLE'] = df_raw[col_title].astype(str).str.upper()
-                    df_new['Start Date'] = start_dt.dt.strftime('%Y-%m-%d')
-                    df_new['Start Time'] = start_dt.dt.strftime('%H:%M')
-                    df_new['End Date'] = end_dt.dt.strftime('%Y-%m-%d')
-                    df_new['End Time'] = end_dt.dt.strftime('%H:%M')
-                    df_new['EPG ID'] = df_raw[col_epg] if col_epg else ""
+            # Tampilkan notifikasi sukses jika ada
+            if st.session_state.get("sync_success_msg"):
+                st.success(st.session_state["sync_success_msg"])
 
-                    target_dates = df_new['Start Date'].dropna().unique().tolist()
-                    
-                    if not target_dates:
-                        st.error("❌ Format tanggal pada data CMS tidak terdeteksi!")
-                        st.stop()
-
-                    # 3. Ambil Data Eksisting dari Google Sheet
-                    gc_client = init_gspread()
-                    sh_target = gc_client.open_by_url(target_url)
-                    ws_target = sh_target.worksheet(selected_tab)
-
-                    existing_data = ws_target.get_all_values()
-                    
-                    # 4. Filter & Proteksi Data Lama
-                    if len(existing_data) > 1:
-                        headers = existing_data[0]
-                        df_existing = pd.DataFrame(existing_data[1:], columns=headers)
+            if st.button("🚀 Update Tab Sheet Sekarang", key="btn_do_sync"):
+                st.session_state["sync_success_msg"] = ""
+                if not cms_raw_input.strip():
+                    st.warning("⚠️ Silakan paste tabel dari CMS terlebih dahulu!")
+                elif not selected_tab:
+                    st.error("⚠️ Silakan pilih Tab Target terlebih dahulu!")
+                else:
+                    try:
+                        # 1. Parse Teks Clipboard (\t) dari CMS
+                        df_raw = pd.read_csv(io.StringIO(cms_raw_input), sep="\t")
+                        df_raw.columns = [str(c).strip().upper() for c in df_raw.columns]
                         
-                        # Cari nama kolom tanggal di data eksisting
-                        col_date_name = next((c for c in df_existing.columns if "START DATE" in str(c).upper() or "DATE" in str(c).upper() or "TANGGAL" in str(c).upper()), df_existing.columns[2])
+                        col_title = next((c for c in df_raw.columns if "TITLE" in c or "JUDUL" in c), None)
+                        col_start = next((c for c in df_raw.columns if "START" in c or "MULAI" in c), None)
+                        col_end = next((c for c in df_raw.columns if "END" in c or "SELESAI" in c), None)
+                        col_epg = next((c for c in df_raw.columns if "EPG" in c), None)
                         
-                        # Pertahankan seluruh data lama KECUALI tanggal yang sedang di-sync
-                        df_filtered = df_existing[~df_existing[col_date_name].astype(str).str.strip().isin(target_dates)]
+                        if not col_title or not col_start or not col_end:
+                            st.error("❌ Header tabel tidak terdeteksi! Pastikan baris judul kolom (TITLE, START TIME) ikut ter-copy.")
+                            st.stop()
                         
-                        # Samakan nama kolom sebelum digabung
-                        df_new.columns = df_existing.columns[:len(df_new.columns)]
-                        df_final = pd.concat([df_filtered, df_new], ignore_index=True)
-                    else:
-                        df_final = df_new
+                        # 2. Format Data CMS Baru
+                        df_new = pd.DataFrame()
+                        start_dt = pd.to_datetime(df_raw[col_start], errors='coerce')
+                        end_dt = pd.to_datetime(df_raw[col_end], errors='coerce')
+                        
+                        df_new['Title'] = df_raw[col_title]
+                        df_new['UPPER TITLE'] = df_raw[col_title].astype(str).str.upper()
+                        df_new['Start Date'] = start_dt.dt.strftime('%Y-%m-%d')
+                        df_new['Start Time'] = start_dt.dt.strftime('%H:%M')
+                        df_new['End Date'] = end_dt.dt.strftime('%Y-%m-%d')
+                        df_new['End Time'] = end_dt.dt.strftime('%H:%M')
+                        df_new['EPG ID'] = df_raw[col_epg] if col_epg else ""
 
-                    # 5. Sort & Bersihkan NaN
-                    date_col = df_final.columns[2]
-                    time_col = df_final.columns[3]
-                    df_final = df_final.sort_values(by=[date_col, time_col]).reset_index(drop=True)
-                    df_final = df_final.fillna("")
+                        target_dates = df_new['Start Date'].dropna().unique().tolist()
+                        
+                        if not target_dates:
+                            st.error("❌ Format tanggal pada data CMS tidak terdeteksi!")
+                            st.stop()
 
-                    # 6. Upload Kembali (Hanya berjalan jika seluruh proses di atas sukses)
-                    ws_target.clear()
-                    data_upload = [df_final.columns.values.tolist()] + df_final.values.tolist()
-                    ws_target.update('A1', data_upload)
-                    st.cache_data.clear()
+                        # 3. Ambil Data Eksisting dari Google Sheet
+                        gc_client = init_gspread()
+                        sh_target = gc_client.open_by_url(target_url)
+                        ws_target = sh_target.worksheet(selected_tab)
 
-                    st.success(f"✅ Sukses! Data tanggal **{', '.join(target_dates)}** di tab **{ws_target.title}** telah diperbarui tanpa mengganggu tanggal lain.")
-                    st.dataframe(df_new.fillna(""), use_container_width=True)
+                        existing_data = ws_target.get_all_values()
+                        
+                        # 4. Filter & Proteksi Data Lama
+                        if len(existing_data) > 1:
+                            headers = existing_data[0]
+                            df_existing = pd.DataFrame(existing_data[1:], columns=headers)
+                            
+                            # Cari nama kolom tanggal di data eksisting
+                            col_date_name = next((c for c in df_existing.columns if "START DATE" in str(c).upper() or "DATE" in str(c).upper() or "TANGGAL" in str(c).upper()), df_existing.columns[2])
+                            
+                            # Pertahankan seluruh data lama KECUALI tanggal yang sedang di-sync
+                            df_filtered = df_existing[~df_existing[col_date_name].astype(str).str.strip().isin(target_dates)]
+                            
+                            # Samakan nama kolom sebelum digabung
+                            df_new.columns = df_existing.columns[:len(df_new.columns)]
+                            df_final = pd.concat([df_filtered, df_new], ignore_index=True)
+                        else:
+                            df_final = df_new
 
-                except Exception as e:
-                    st.error(f"❌ Gagal melakukan Sync: {e}")
+                        # 5. Sort & Bersihkan NaN
+                        date_col = df_final.columns[2]
+                        time_col = df_final.columns[3]
+                        df_final = df_final.sort_values(by=[date_col, time_col]).reset_index(drop=True)
+                        df_final = df_final.fillna("")
+
+                        # 6. Upload Kembali (Hanya berjalan jika seluruh proses di atas sukses)
+                        ws_target.clear()
+                        data_upload = [df_final.columns.values.tolist()] + df_final.values.tolist()
+                        ws_target.update('A1', data_upload)
+                        st.cache_data.clear()
+
+                        st.session_state["sync_success_msg"] = f"✅ Sukses! Data tanggal **{', '.join(target_dates)}** di tab **{selected_tab}** telah diperbarui!"
+                        st.session_state["clear_cms_text"] = True
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"❌ Gagal melakukan Sync: {e}")
     col1, col2, col3 = st.columns(3)
     with col1:
         kategori = st.selectbox("1. Category:", ["⚽ Sports", "📺 Non-Sports"])
@@ -797,7 +812,7 @@ with col_tengah:
         if not valid_tabs:
             st.error("No valid matching 'TO CSV' sheets tab found!")
             st.stop()
-        pilihan_tab = st.selectbox("2. Channels:", valid_tabs)
+        pilihan_tab = st.selectbox("2. Channels:", valid_tabs, key="active_channel")
 
     raw_df = fetch_sheet_data(target_url, pilihan_tab)
     if raw_df.empty:
