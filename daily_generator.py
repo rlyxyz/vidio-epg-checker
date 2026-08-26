@@ -682,12 +682,12 @@ with col_tengah:
 # =======================================================
     # FITUR SYNC CMS KE TAB GOOGLE SHEET (SAFE APPEND/REPLACE)
     # =======================================================
-    with st.expander("🔄 Sync Data CMS ke Google Sheet", expanded=False):
-        st.markdown("##### Update Tab Spreadsheet")
+    with st.expander("🔄 Sync CMS Data to Google Sheets", expanded=False):
+        st.markdown("##### Update Spreadsheet Tab")
 
         sc_col1, sc_col2 = st.columns([1, 2])
         with sc_col1:
-            sync_kategori = st.selectbox("Pilih Kategori Sheet:", ["⚽ Sports", "📺 Non-Sports"], key="sync_kat")
+            sync_kategori = st.selectbox("Select Sheet Category:", ["⚽ Sports", "📺 Non-Sports"], key="sync_kat")
             target_url = URL_SPORT if sync_kategori == "⚽ Sports" else URL_NON_SPORT
             
             try:
@@ -696,10 +696,10 @@ with col_tengah:
                 available_tabs = []
                 
             if available_tabs:
-                selected_tab = st.selectbox("Pilih Target Tab Sheet:", available_tabs, key="sync_channel_select", on_change=sync_channel_callback)
+                selected_tab = st.selectbox("Select Target Sheet Tab:", available_tabs, key="sync_channel_select", on_change=sync_channel_callback)
                 st.caption(f"📌 Target Tab: **{selected_tab}**")
             else:
-                st.error("Gagal membaca tab dari Google Sheet.")
+                st.error("Failed to read tabs from Google Sheets.")
                 selected_tab = None
 
         with sc_col2:
@@ -708,25 +708,25 @@ with col_tengah:
                 st.session_state["clear_cms_text"] = False
 
             cms_raw_input = st.text_area(
-                "Paste tabel dari CMS di sini:",
+                "Paste CMS table here:",
                 height=150,
-                placeholder="PENTING: Block dari JUDUL HEADER (TITLE, START TIME, dll) lalu Copy & Paste...",
+                placeholder="IMPORTANT: Highlight from HEADER TITLE (TITLE, START TIME, etc.) then Copy & Paste...",
                 key="cms_text_data"
             )
 
-            # Tampilkan notifikasi sukses jika ada
+            # Display success notification if available
             if st.session_state.get("sync_success_msg"):
                 st.success(st.session_state["sync_success_msg"])
 
-            if st.button("🚀 Update Tab Sheet Sekarang", key="btn_do_sync"):
+            if st.button("🚀 Update Sheet Tab Now", key="btn_do_sync"):
                 st.session_state["sync_success_msg"] = ""
                 if not cms_raw_input.strip():
-                    st.warning("⚠️ Silakan paste tabel dari CMS terlebih dahulu!")
+                    st.warning("⚠️ Please paste the CMS table first!")
                 elif not selected_tab:
-                    st.error("⚠️ Silakan pilih Tab Target terlebih dahulu!")
+                    st.error("⚠️ Please select a Target Tab first!")
                 else:
                     try:
-                        # 1. Parse Teks Clipboard (\t) dari CMS
+                        # 1. Parse Clipboard Text (\t) from CMS
                         df_raw = pd.read_csv(io.StringIO(cms_raw_input), sep="\t")
                         df_raw.columns = [str(c).strip().upper() for c in df_raw.columns]
                         
@@ -736,10 +736,10 @@ with col_tengah:
                         col_epg = next((c for c in df_raw.columns if "EPG" in c), None)
                         
                         if not col_title or not col_start or not col_end:
-                            st.error("❌ Header tabel tidak terdeteksi! Pastikan baris judul kolom (TITLE, START TIME) ikut ter-copy.")
+                            st.error("❌ Table header not detected! Make sure the header row (TITLE, START TIME) is included.")
                             st.stop()
                         
-                        # 2. Format Data CMS Baru
+                        # 2. Format New CMS Data
                         df_new = pd.DataFrame()
                         start_dt = pd.to_datetime(df_raw[col_start], errors='coerce')
                         end_dt = pd.to_datetime(df_raw[col_end], errors='coerce')
@@ -755,57 +755,56 @@ with col_tengah:
                         target_dates = df_new['Start Date'].dropna().unique().tolist()
                         
                         if not target_dates:
-                            st.error("❌ Format tanggal pada data CMS tidak terdeteksi!")
+                            st.error("❌ Date format in CMS data not detected!")
                             st.stop()
 
-                        # 3. Ambil Data Eksisting dari Google Sheet
+                        # 3. Fetch Existing Data from Google Sheets
                         gc_client = init_gspread()
                         sh_target = gc_client.open_by_url(target_url)
                         ws_target = sh_target.worksheet(selected_tab)
 
                         existing_data = ws_target.get_all_values()
                         
-                        # 4. Filter & Proteksi Data Lama
+                        # 4. Filter & Protect Existing Data
                         if len(existing_data) > 1:
                             headers = existing_data[0]
                             df_existing = pd.DataFrame(existing_data[1:], columns=headers)
                             
-                            # Cari nama kolom tanggal di data eksisting
                             col_date_name = next((c for c in df_existing.columns if "START DATE" in str(c).upper() or "DATE" in str(c).upper() or "TANGGAL" in str(c).upper()), df_existing.columns[2])
                             
-                            # Pertahankan seluruh data lama KECUALI tanggal yang sedang di-sync
                             df_filtered = df_existing[~df_existing[col_date_name].astype(str).str.strip().isin(target_dates)]
                             
-                            # Samakan nama kolom sebelum digabung
                             df_new.columns = df_existing.columns[:len(df_new.columns)]
                             df_final = pd.concat([df_filtered, df_new], ignore_index=True)
                         else:
                             df_final = df_new
 
-                        # 5. Sort & Bersihkan NaN
+                        # 5. Sort & Clean NaN
                         date_col = df_final.columns[2]
                         time_col = df_final.columns[3]
                         df_final = df_final.sort_values(by=[date_col, time_col]).reset_index(drop=True)
                         df_final = df_final.fillna("")
 
-                        # 6. Upload Kembali (Hanya berjalan jika seluruh proses di atas sukses)
+                        # 6. Re-upload
                         ws_target.clear()
                         data_upload = [df_final.columns.values.tolist()] + df_final.values.tolist()
                         ws_target.update('A1', data_upload)
                         st.cache_data.clear()
 
-                        st.session_state["sync_success_msg"] = f"✅ Sukses! Data tanggal **{', '.join(target_dates)}** di tab **{selected_tab}** telah diperbarui!"
+                        st.session_state["sync_success_msg"] = f"✅ Success! Data for date **{', '.join(target_dates)}** in tab **{selected_tab}** has been updated!"
                         st.session_state["clear_cms_text"] = True
                         st.rerun()
 
                     except Exception as e:
-                        st.error(f"❌ Gagal melakukan Sync: {e}")
+                        st.error(f"❌ Sync failed: {e}")
+
     col1, col2, col3 = st.columns(3)
     with col1:
         kategori = st.selectbox("1. Category:", ["⚽ Sports", "📺 Non-Sports"])
         target_url = URL_SPORT if kategori == "⚽ Sports" else URL_NON_SPORT
     with col2:
-        try: valid_tabs = fetch_valid_tabs(target_url)
+        try: 
+            valid_tabs = fetch_valid_tabs(target_url)
         except Exception as e:
             st.error(f"Failed connection to Google Sheets database. Error: {e}")
             st.stop()
