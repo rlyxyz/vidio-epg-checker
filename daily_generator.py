@@ -296,11 +296,16 @@ body.light-theme .switch-label {{
     -webkit-appearance: none !important;
 }}
 div[data-testid="stInputInstructions"],
+div[data-testid="stInputInstructions"] *,
 small[data-testid="stWidgetInstructions"],
-[data-testid="stWidgetInstructions"] {{
+[data-testid="stWidgetInstructions"],
+.stTextInput small {{
     display: none !important;
     visibility: hidden !important;
+    opacity: 0 !important;
     height: 0 !important;
+    width: 0 !important;
+    pointer-events: none !important;
 }}
 .slider {{
     position: absolute; width: 34px; height: 34px; top: 5px; left: 6px; border-radius: 50%; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
